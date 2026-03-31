@@ -36,7 +36,8 @@ environment_variables:
   CUDA_DEVICE_ORDER: PCI_BUS_ID
   COREFLOW_DATA_ROOT: "/mnt/train_data"
   IRIS_PROFILING_EVERY_N_SEC: "-1"
-  DUST3R_S3_CKPT: "s3://bolt-prod-2320781627/tasks/avm2gjymse/artifacts/stage1_224/checkpoint-best.pth"
+  # DUST3R_S3_CKPT: "s3://bolt-prod-2320781627/tasks/avm2gjymse/artifacts/stage1_224/checkpoint-best.pth"
+  DUST3R_S3_CKPT: "s3://bolt-prod-2320781627/tasks/zhid2h6vcm/artifacts/stage1_224/checkpoint-best.pth"
 
 permissions:
   viewers: ["feaml-developers"]

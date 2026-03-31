@@ -219,8 +219,8 @@ def main():
         f" + 10_000 @ Co3d(ROOT='{data_dir}/co3d_processed', split='train', aug_crop=16, mask_bg='rand', resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter)"
         f" + 10_000 @ StaticThings3D(ROOT='{data_dir}/staticthings3d_processed', aug_crop=256, mask_bg='rand', resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter)"
         f" + 10_000 @ ScanNetpp(ROOT='{data_dir}/scannetpp_processed', split='train', aug_crop=256, resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter) "
-        # f" + 10_000 @ Waymo(ROOT='{data_dir}/waymo_processed', split='train', aug_crop=16, resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter) "
-        # f" + 10_000 @ WildRGBD(ROOT='{data_dir}/wildrgbd_processed', split='train', aug_crop=16, resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter) "
+        f" + 10_000 @ Waymo(ROOT='{data_dir}/waymo_processed', split='train', aug_crop=16, resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter) "
+        f" + 10_000 @ WildRGBD(ROOT='{data_dir}/wildrgbd_processed', split='train', aug_crop=16, resolution=[(512, 384), (512, 336), (512, 288), (512, 256), (512, 160)], transform=ColorJitter) "
     )
 
     test_dataset_str_512 = (
