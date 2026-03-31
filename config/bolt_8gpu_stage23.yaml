@@ -1,0 +1,44 @@
+name: "dust3r_training_stage23"
+tags: ["dust3r"]
+priority: 1
+project_id: amc_sentinel
+setup_command: uv pip install -r requirements.txt && uv pip install -r requirements_optional.txt && cd croco/models/curope/ && python setup.py build_ext --inplace && cd ../../../
+command: python bolt_train_stage23.py
+resources:
+  docker_image: docker.apple.com/dwang999353/py3.10-cuda12.8-torch2.8-pyg2.7:latest
+  cluster: ["GCP_ALL"]
+  task_type: 8gpu
+  memory_gb: 1000
+  disk_gb: 4000
+  ports:
+    - TORCH_DISTRIBUTED_PORT
+    - TENSORBOARD_PORT
+  rdma: false
+  timeout: 14d
+
+attribution:
+   foundation_model: False
+   development_type: training
+   model_name: "dust3r_training_stage23"
+   model_type: "other"
+   project: "feaml"
+   model_size: 30M
+   intended_use: internal
+   model_version: v0
+   spend: dev
+
+environment_variables:
+  TORCH_NCCL_ASYNC_ERROR_HANDLING: "1"
+  TORCH_NCCL_BLOCKING_WAIT: "1"
+  PYTHONPATH: "./src"
+  PYTHONFAULTHANDLER: "1"
+  LD_LIBRARY_PATH: "$LD_LIBRARY_PATH:/usr/lib/x86_64-linux-gnu"
+  CUDA_DEVICE_ORDER: PCI_BUS_ID
+  COREFLOW_DATA_ROOT: "/mnt/train_data"
+  IRIS_PROFILING_EVERY_N_SEC: "-1"
+  # DUST3R_S3_CKPT: "s3://bolt-prod-2320781627/tasks/avm2gjymse/artifacts/stage1_224/checkpoint-best.pth"
+  DUST3R_S3_CKPT: "s3://bolt-prod-2320781627/tasks/zhid2h6vcm/artifacts/stage1_224/checkpoint-best.pth"
+
+permissions:
+  viewers: ["feaml-developers"]
+
