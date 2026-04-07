@@ -79,16 +79,23 @@ def process_single_dataset(name, s3_dir_url, target_dir):
 def fetch_and_extract_multipart_datasets(s3_dir_url, target_dir):
     """Downloads multi-part dataset archives from S3 and extracts them efficiently using parallel processing."""
     os.makedirs(target_dir, exist_ok=True)
-    
+
     datasets = ["arkitscenes", "blendedmvs", "co3d", "habitat", "megadepth", "scannetpp", "staticthings3d", "waymo", "wildrgbd"]
-    
-    max_workers = min(len(datasets), 4) # Adjust max_workers as needed, 4 is usually a safe default for I/O
+
+    # Only download datasets whose extracted directory is missing
+    missing = [name for name in datasets if not os.path.isdir(os.path.join(target_dir, f"{name}_processed"))]
+    if not missing:
+        print("All dataset directories already exist, skipping download.")
+        return
+    print(f"Missing datasets: {missing}")
+
+    max_workers = min(len(missing), 4) # Adjust max_workers as needed, 4 is usually a safe default for I/O
     print(f"Starting parallel download and extraction with {max_workers} workers...")
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=max_workers) as executor:
-        futures = {executor.submit(process_single_dataset, name, s3_dir_url, target_dir): name for name in datasets}
-        
-        for future in tqdm(concurrent.futures.as_completed(futures), total=len(datasets), desc="Total Datasets Progress"):
+        futures = {executor.submit(process_single_dataset, name, s3_dir_url, target_dir): name for name in missing}
+
+        for future in tqdm(concurrent.futures.as_completed(futures), total=len(missing), desc="Total Datasets Progress"):
             name = futures[future]
             try:
                 success = future.result()
@@ -144,12 +151,9 @@ def main():
 
     s3_dataset_url = os.environ.get("DUST3R_S3_DATASET", "s3://qianfan-shen/dust3r/dust3r_processed_data/")
     
-    # 2. Data fetching and uncompress
-    if not os.path.exists(data_dir):
-        print(f"Fetching data from {s3_dataset_url}...")
-        fetch_and_extract_multipart_datasets(s3_dataset_url, data_dir)
-    else:
-        print(f"Data already exists at {data_dir}, skipping download.")
+    # 2. Data fetching and uncompress (per-dataset check inside)
+    print(f"Checking datasets in {data_dir}...")
+    fetch_and_extract_multipart_datasets(s3_dataset_url, data_dir)
 
     
     # 3. Download pretrained weights and Stage 1 checkpoint

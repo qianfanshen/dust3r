@@ -232,8 +232,10 @@ class ConfLoss (MultiLoss):
         conf_loss2 = loss2 * conf2 - self.alpha * log_conf2
 
         # average + nan protection (in case of no valid pixels at all)
-        conf_loss1 = conf_loss1.mean() if conf_loss1.numel() > 0 else 0
-        conf_loss2 = conf_loss2.mean() if conf_loss2.numel() > 0 else 0
+        zero1 = (pred1['conf'] * 0.0).sum()
+        zero2 = (pred2['conf'] * 0.0).sum()
+        conf_loss1 = conf_loss1.mean() if conf_loss1.numel() > 0 else zero1
+        conf_loss2 = conf_loss2.mean() if conf_loss2.numel() > 0 else zero2
 
         return conf_loss1 + conf_loss2, dict(conf_loss_1=float(conf_loss1), conf_loss2=float(conf_loss2), **details)
 

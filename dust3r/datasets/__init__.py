@@ -45,6 +45,7 @@ def get_data_loader(dataset, batch_size, num_workers=8, shuffle=True, drop_last=
         num_workers=num_workers,
         pin_memory=pin_mem,
         drop_last=drop_last,
+        timeout=120 if num_workers > 0 else 0,
     )
 
     return data_loader

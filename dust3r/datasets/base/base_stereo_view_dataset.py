@@ -68,6 +68,18 @@ class BaseStereoViewDataset (EasyDataset):
             assert len(self._resolutions) == 1
             ar_idx = 0
 
+        max_retries = 10
+        for attempt in range(max_retries):
+            try:
+                return self._getitem_impl(idx, ar_idx)
+            except Exception as e:
+                if attempt < max_retries - 1:
+                    print(f"[WARNING] {type(self).__name__} failed on idx={idx}: {e}. Retrying with random idx ({attempt+1}/{max_retries})")
+                    idx = np.random.randint(len(self))
+                else:
+                    raise
+
+    def _getitem_impl(self, idx, ar_idx):
         # set-up the rng
         if self.seed:  # reseed for each __getitem__
             self._rng = np.random.default_rng(seed=self.seed + idx)

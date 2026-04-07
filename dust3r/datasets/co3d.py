@@ -83,6 +83,9 @@ class Co3d(BaseStereoViewDataset):
         while len(imgs_idxs) > 0:  # some images (few) have zero depth
             im_idx = imgs_idxs.pop()
 
+            if all(self.invalidate[obj, instance][resolution]):
+                raise ValueError(f"All images in scene {obj}/{instance} are invalid at resolution {resolution}")
+
             if self.invalidate[obj, instance][resolution][im_idx]:
                 # search for a valid image
                 random_direction = 2 * rng.choice(2) - 1

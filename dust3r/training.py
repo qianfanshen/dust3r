@@ -21,6 +21,9 @@ from collections import defaultdict
 from pathlib import Path
 from typing import Sized
 
+import cv2
+cv2.setNumThreads(0)
+
 import torch
 import torch.backends.cudnn as cudnn
 from torch.utils.tensorboard import SummaryWriter
@@ -151,7 +154,7 @@ def train(args):
 
     if args.distributed:
         model = torch.nn.parallel.DistributedDataParallel(
-            model, device_ids=[args.gpu], find_unused_parameters=True, static_graph=True)
+            model, device_ids=[args.gpu], find_unused_parameters=True, static_graph=False)
         model_without_ddp = model.module
 
     # following timm: set wd as 0 for bias and norm layers
@@ -294,18 +297,49 @@ def train_one_epoch(model: torch.nn.Module, criterion: torch.nn.Module,
         if data_iter_step % accum_iter == 0:
             misc.adjust_learning_rate(optimizer, epoch_f, args)
 
-        loss_tuple = loss_of_one_batch(batch, model, criterion, device,
-                                       symmetrize_batch=True,
-                                       use_amp=bool(args.amp), ret='loss')
-        loss, loss_details = loss_tuple  # criterion returns two values
-        loss_value = float(loss)
+        try:
+            loss_tuple = loss_of_one_batch(batch, model, criterion, device,
+                                           symmetrize_batch=True,
+                                           use_amp=bool(args.amp), ret='loss')
+            loss, loss_details = loss_tuple  # criterion returns two values
+            loss_value = float(loss)
 
-        if not math.isfinite(loss_value):
-            print("Loss is {}, replacing with 0.0 to prevent DDP deadlock".format(loss_value))
+            # Check if loss is finite AND is a valid PyTorch tensor
+            is_valid = isinstance(loss, torch.Tensor) and math.isfinite(loss_value)
+            local_error_state = 0.0 if is_valid else 1.0
+        except Exception as e:
+            import traceback
+            import sys
+            print(f"\n{'='*50}\n[Rank {misc.get_rank()}] EXCEPTION CAUGHT DURING FORWARD PASS\n{'='*50}")
+            traceback.print_exc()
+            sys.stdout.flush()
+            # Fake variables so the process survives to the sync point
+            loss = sum(p.sum() for p in model.parameters()) * 0.0 # valid tensor connected to graph
             loss_value = 0.0
-            # Don't do backwards pass, but let it proceed so all_reduce_mean doesn't hang
+            loss_details = {}
+            local_error_state = 2.0
+
+        local_error_tensor = torch.tensor([local_error_state], device=device)
+
+        if torch.distributed.is_initialized():
+            torch.distributed.all_reduce(local_error_tensor)
+
+        if local_error_tensor.item() > 0.0:
+            if local_error_state == 2.0:
+                print(f"[Rank {misc.get_rank()}] Bypassing backward: I threw an exception.")
+            elif local_error_state == 1.0:
+                print(f"[Rank {misc.get_rank()}] Bypassing backward: I had NaN/Invalid loss ({loss_value}).")
+            elif local_error_state == 0.0:
+                print(f"[Rank {misc.get_rank()}] Bypassing backward: Another rank failed or had NaN loss.")
+
+            # Everyone performs a dummy backward pass to keep DDP hook sync happy
+            dummy_loss = (loss * 0.0).sum() if isinstance(loss, torch.Tensor) else (sum(p.sum() for p in model.parameters()) * 0.0)
+            dummy_loss.backward()
+
             if (data_iter_step + 1) % accum_iter == 0:
                 optimizer.zero_grad()
+
+            loss_value = 0.0
         else:
             loss /= accum_iter
             loss_scaler(loss, optimizer, parameters=model.parameters(),
